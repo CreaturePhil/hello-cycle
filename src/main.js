@@ -1,38 +1,30 @@
 import Rx from 'rx';
 import Cycle from '@cycle/core';
-import {makeDOMDriver, button, div, h1, h4, a} from '@cycle/dom';
-import {makeHTTPDriver} from '@cycle/http';
+import {makeDOMDriver, div, input, ul, li} from '@cycle/dom';
 
 function main(sources) {
-  const clickEvent$ = sources.DOM.select('.get-first').events('click');
-  const url = 'http://jsonplaceholder.typicode.com/users/1';
-  const request$ = clickEvent$.map(() => ({url, method: 'GET'}));
-
-  const response$$ = sources.HTTP
-    .filter(response$ => response$.request.url === url);
-
-  const response$ = response$$.switch();
-  const firstUser$ = response$.map(response => response.body).startWith(null);
+  const enterEvent$ = sources.DOM
+    .select('input')
+    .events('keyup')
+    .filter(e => e.keyCode === 13)
+    .map(e => e.target.value)
+    .scan((prev, cur) => prev.concat(cur), [])
+    .startWith([]);
 
   return {
-    DOM: firstUser$.map(firstUser =>
+    DOM: enterEvent$.map(messages =>
       div([
-        button('.get-first', 'Get first user'),
-        firstUser === null ? null : div('.user-details', [
-          h1('.user-name', firstUser.name),
-          h4('.user-email', firstUser.email),
-          a('.user-website', {href: firstUser.website}, firstUser.website)
+        input({type: 'text', value: ''}),
+        ul([
+          messages.map(m => li(m))
         ])
       ])
-    ),
-
-    HTTP: request$
+    )
   };
 }
 
 const drivers = {
-  DOM: makeDOMDriver('#app'),
-  HTTP: makeHTTPDriver()
+  DOM: makeDOMDriver('#app')
 };
 
 Cycle.run(main, drivers);
