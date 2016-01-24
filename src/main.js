@@ -1,23 +1,36 @@
 import Rx from 'rx';
 import Cycle from '@cycle/core';
-import {makeDOMDriver, div, input, ul, li} from '@cycle/dom';
+import {makeDOMDriver, div, input, label, h2} from '@cycle/dom';
 
 function main(sources) {
-  const enterEvent$ = sources.DOM
-    .select('input')
-    .events('keyup')
-    .filter(e => e.keyCode === 13)
-    .map(e => e.target.value)
-    .scan((prev, cur) => prev.concat(cur), [])
-    .startWith([]);
+  const changeWeight$ = sources.DOM.select('.weight').events('input')
+    .map(ev => ev.target.value);
+
+  const changeHeight$ = sources.DOM.select('.height').events('input')
+    .map(ev => ev.target.value);
+
+  const state$ = Rx.Observable.combineLatest(
+    changeWeight$.startWith(70),
+    changeHeight$.startWith(170),
+    (weight, height) => {
+      const heightMeters = height * 0.01;
+      const bmi = Math.round(weight / (heightMeters * heightMeters));
+      return {bmi, weight, height};
+    }
+  );
 
   return {
-    DOM: enterEvent$.map(messages =>
+    DOM: state$.map(state =>
       div([
-        input({type: 'text', value: ''}),
-        ul([
-          messages.map(m => li(m))
-        ])
+        div([
+          label(`Weight: ${state.weight}kg`),
+          input('.weight', {type: 'range', min: 40, max: 150, value: state.weight})
+        ]),
+        div([
+          label(`Height: ${state.height}cm`),
+          input('.height', {type: 'range', min: 140, max: 220, value: state.height})
+        ]),
+        h2(`BMI is ${state.bmi}`)
       ])
     )
   };
